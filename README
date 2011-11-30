@@ -1,0 +1,22 @@
+Dependencies:
+ * PyCrypto
+ * Gevent
+ * BottlePy
+
+Rex is an experimental protocol for simplifying a few under-the-hood steps of P2P
+hole punching. It works by providing a service to maintain a TCP socket to the
+server on port 7653 which the server keeps alive for you (as long as your TCP stack
+keeps responding with ACK packets, which you don't have to worry about at the
+application level except that the server will drop you if the connection is lost).
+Then, you can use the HTTP hosting part of the service to host a URL that contains
+your public and local IP addresses (and optionally, an RSA signature of them) to
+pass around to friends who want to connect to you.
+
+The simultaneous connection code is still up to you. The Rex server provides only
+the "REndezvous Exchange" part of the stuff; you still have to let the other person
+know by some means to try to connect to you while you try to connect to him. Client
+code for this is coming soon as a reference that will demonstrate connecting to
+a remote computer by a URL.
+
+Documentation of the Rex protocol, in both its components, is available here:
+https://docs.google.com/document/pub?id=14Us-En_y8-MPRDgja5Obq7XoLBYCyaziPQaW-1vleg0
