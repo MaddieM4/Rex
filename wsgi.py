@@ -54,7 +54,7 @@ def wizard_set(name):
 
 @app.route("/favicon.ico")
 def favicon():
-	return bottle.static_file("logo.ico", ".")
+	return bottle.static_file("logo.ico", "./img/")
 
 def start(port=8000):
 	return gevent.spawn(bottle.run, app, server="gevent", host="0.0.0.0", port = port)
