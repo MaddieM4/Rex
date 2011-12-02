@@ -9,7 +9,14 @@ import bottle
 
 import user
 
-hosted = {}
+print "Loading users..."
+try:
+	hosted = user.udictf("users.save")
+	print "Done loading users"
+except Exception, e:
+	import traceback
+	traceback.print_exc()
+	hosted = {}
 
 app = bottle.Bottle()
 
@@ -62,3 +69,11 @@ def start(port=8000, dropper=None):
 		def wait_drop():
 			dropper.wait()
 	return gevent.spawn(bottle.run, app, server="gevent", host="0.0.0.0", port = port)
+
+def saver():
+	import time
+	while True:
+		time.sleep(10)
+		print "Backing up users..."
+		user.save_udictf("users.save", hosted)
+		print "Done"

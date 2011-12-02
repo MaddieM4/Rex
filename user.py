@@ -25,8 +25,8 @@ def now():
 	return datetime.datetime.now()
 
 class User(object):
-	def __init__(self, name, **kwargs):
-		self.name = name
+	def __init__(self, argname, **kwargs):
+		self.name = argname # if we used "name", we'd just collide with the kwarg name.
 		self.password = None
 		self.public = ""
 		self.private = ""
@@ -52,11 +52,15 @@ class User(object):
 
 	def __iter__(self):
 		''' For dict conversion '''
+		return self.keys().__iter__()
+
+	def keys(self):
+		''' For dict conversion '''
 		return ['name',
 			'password',
 			'ips',
 			'key',
-			'challenge'].__iter__()
+			'challenge']
 
 	def __getitem__(self, i):
 		if i == "name":
@@ -83,8 +87,30 @@ class User(object):
 				}
 		raise KeyError(i)
 
+	def __setitem__(self, i, v):
+		if i == "name":
+			self.name = v
+		elif i == "password":
+			self.password = v
+		elif i == "ips":
+			self.public  = v['public']
+			self.private = v['private']
+			self.sog     = v['sig']
+		elif i == "key":
+			self.set_key(v)
+		elif i == "challenge":
+			if v == None:
+				self._challenge = None
+			else:
+				self._challenge = (v['source'], v['encrypted'], v['expires'])
+		else:
+			raise KeyError(i)
+
 	def set_key(self, keystr):
-		self.key = RSA.importKey(keystr)
+		if keystr == None:
+			self.key = None
+		else:
+			self.key = RSA.importKey(keystr)
 
 	def get_key(self):
 		if self.key == None:
@@ -118,13 +144,35 @@ class User(object):
 
 def serialize(users):
 	''' Accepts a list of Users, returns serialized list '''
-	return pickle.dumps([u.serialize() for u in users])
+	return pickle.dumps([dict(u) for u in users])
 
 def unserialize(str):
 	''' Accepts serialized list, returns list of Users '''
 	users = pickle.loads(str)
+	#print users
 	return [makeuser(d) for d in users]
 
 def makeuser(d):
 	''' Converts a dict into a User '''
-	return User(d['name'], d)
+	return User(d['name'], **d)
+
+def save(ulist, filename):
+	with open(filename, 'w') as f:
+		f.write(serialize(ulist))
+
+def load(filename):
+	with open(filename, 'r') as f:
+		return unserialize(f.read())
+
+def udict(ulist):
+	# Converts list into dict
+	result = {}
+	for i in ulist:
+		result[i.name] = i
+	return result
+
+def udictf(filename):
+	return udict(load(filename))
+
+def save_udictf(filename, d):
+	return save(d.values(), filename)
