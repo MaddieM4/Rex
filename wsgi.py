@@ -54,7 +54,7 @@ def wizard_set(name):
 
 @app.route("/favicon.ico")
 def favicon():
-	return bottle.static_file("logo.ico", ".")
+	return bottle.static_file("logo.ico", "./img/")
 
 def start(port=8000, dropper=None):
 	if dropper!=None:
