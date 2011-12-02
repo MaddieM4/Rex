@@ -9,13 +9,15 @@ from gevent import spawn
 import socket
 import time
 
-def server(host='0.0.0.0', port=7653):
+def server(host='0.0.0.0', port=7653, dropper=None):
 	srv = socket.socket()
 	addr = ('0.0.0.0', port)
 	srv.bind(addr)
+	if dropper != None:
+		dropper.wait()
 	srv.listen(500)
 	while 1:
-		print "Hosting on", addr
+		print "Hosting holdopen on", addr
 		conn, newaddr = srv.accept()
 		print "New connection: ", repr(newaddr)
 		spawn(handler, conn, newaddr)

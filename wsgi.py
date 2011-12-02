@@ -56,5 +56,9 @@ def wizard_set(name):
 def favicon():
 	return bottle.static_file("logo.ico", ".")
 
-def start(port=8000):
+def start(port=8000, dropper=None):
+	if dropper!=None:
+		@app.hook('before_request')
+		def wait_drop():
+			dropper.wait()
 	return gevent.spawn(bottle.run, app, server="gevent", host="0.0.0.0", port = port)
