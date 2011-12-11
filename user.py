@@ -7,7 +7,9 @@ from Crypto.PublicKey import RSA
 
 
 randomizer = random.SystemRandom()
-EXPIRATION_TIME = datetime.timedelta(days=30)
+CHALLENGE_TIME        = datetime.timedelta(minutes=2)
+UNCLAIMED_EXPIRE_TIME = datetime.timedelta(hours=1)
+CLAIMED_EXPIRE_TIME   = datetime.timedelta(days=365)
 
 def randstring():
 	return base64.encodestring(
@@ -32,6 +34,7 @@ class User(object):
 		self.sig = ""
 		self.key = None
 		self._challenge = None
+		self.expires = Expiration(UNCLAIMED_EXPIRE_TIME)
 
 		self.set_from(kwargs)
 
@@ -42,12 +45,6 @@ class User(object):
 	def set_from(self, d):
 		for i in d:
 			self[i] = d[i]
-
-	def serialize(self):
-		return pickle.dumps(dict(self))
-
-	def unserialize(self, str):
-		self.set_from(pickle.loads(str))
 
 	def __iter__(self):
 		''' For dict conversion '''
@@ -74,6 +71,8 @@ class User(object):
 			}
 		if i == "key":
 			return self.get_key()
+		if i == "expires":
+			return self.expires
 		if i == "challenge":
 			c = self.challenge
 			if c == None:
@@ -124,6 +123,10 @@ class User(object):
 			return True
 
 	@property
+	def expired(self):
+		return self.expires.expired
+
+	@property
 	def challenge(self):
 		if self.has_challenge():
 			return self._challenge
@@ -132,7 +135,7 @@ class User(object):
 			if self.key != None:
 				source = randstring()
 				encrypted = encryptstring(source, self.key)
-				expires = now() + CHALLENGE_TIME
+				expires = Expiration(CHALLENGE_TIME)
 
 				self._challenge = (source, encrypted, expires)
 
@@ -140,6 +143,33 @@ class User(object):
 			else:
 				# No key, no challenge
 				return None
+
+class Expiration(object):
+	def __init__(self, delta):
+		self.dtobj = datetime.datetime(1970,1,1)
+		self.delta = delta
+		self.reset()
+
+	def __getattr__(self, name):
+		def reset():
+			self.set(self.now() + self.delta)
+
+		def set(other):
+			self.dtobj = other
+
+		def expired():
+			return self.now() > self.dtobj
+
+		if name =="reset":
+			return reset
+		elif name =="set":
+			return set
+		elif name =="expired":
+			return expired()
+		elif name in ("dtobj", "delta"):
+			return object.__getattr__(self, name)
+		else:
+			return getattr(self.dtobj, name)
 
 def serialize(users):
 	''' Accepts a list of Users, returns serialized list '''
@@ -175,3 +205,11 @@ def udictf(filename):
 
 def save_udictf(filename, d):
 	return save(d.values(), filename)
+
+def clean_dict(d):
+	''' Remove expired users '''
+	keys = d.keys()
+	for i in keys:
+		if d[i].expired:
+			del d[i]
+	return d
