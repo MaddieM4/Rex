@@ -1,4 +1,4 @@
-import datetime
+import expiration
 import random
 import base64
 import pickle
@@ -7,9 +7,9 @@ from Crypto.PublicKey import RSA
 
 
 randomizer = random.SystemRandom()
-CHALLENGE_TIME        = datetime.timedelta(minutes=2)
-UNCLAIMED_EXPIRE_TIME = datetime.timedelta(hours=1)
-CLAIMED_EXPIRE_TIME   = datetime.timedelta(days=365)
+CHALLENGE_TIME        = expiration.timedelta(minutes=2)
+UNCLAIMED_EXPIRE_TIME = expiration.timedelta(hours=1)
+CLAIMED_EXPIRE_TIME   = expiration.timedelta(days=365)
 
 def randstring():
 	return base64.encodestring(
@@ -34,7 +34,7 @@ class User(object):
 		self.sig = ""
 		self.key = None
 		self._challenge = None
-		self.expires = Expiration(UNCLAIMED_EXPIRE_TIME)
+		self.expires = expiration.Expiration(UNCLAIMED_EXPIRE_TIME)
 
 		self.set_from(kwargs)
 
@@ -143,33 +143,6 @@ class User(object):
 			else:
 				# No key, no challenge
 				return None
-
-class Expiration(object):
-	def __init__(self, delta):
-		self.dtobj = datetime.datetime(1970,1,1)
-		self.delta = delta
-		self.reset()
-
-	def __getattr__(self, name):
-		def reset():
-			self.set(self.now() + self.delta)
-
-		def set(other):
-			self.dtobj = other
-
-		def expired():
-			return self.now() > self.dtobj
-
-		if name =="reset":
-			return reset
-		elif name =="set":
-			return set
-		elif name =="expired":
-			return expired()
-		elif name in ("dtobj", "delta"):
-			return object.__getattr__(self, name)
-		else:
-			return getattr(self.dtobj, name)
 
 def serialize(users):
 	''' Accepts a list of Users, returns serialized list '''
