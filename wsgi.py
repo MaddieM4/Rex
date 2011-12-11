@@ -53,6 +53,15 @@ def post_ip(name):
 
 	return ["Set successfully"]
 
+@app.route('/wizard/_/:action')
+def wizard_redirect(action):
+	return [
+		"<html><head><title>Rex %s Wizard redirect</title></head><body>" % action,
+		'Name: <input type="text" id="name"/><br/>',
+		'<input type="button", value="Go!" onclick="window.location = \'/wizard/\'+document.getElementById(\'name\').value+\'/%s\'">' % action,
+		"</body></html>"
+	]	
+
 @app.route('/wizard/:name/set')
 def wizard_set(name):
 	return [
@@ -64,9 +73,24 @@ def wizard_set(name):
 		"</form></body></html>"
 	]
 
+@app.route('/')
+@app.route('/index')
+@app.route('/index.htm')
+def root():
+	return bottle.static_file("root.html", "./static_html/")
+
+@app.route('/wizard')
+@app.route('/wizard/')
+def wizard_root():
+	return bottle.static_file("wizard.html", "./static_html/")
+
 @app.route("/favicon.ico")
 def favicon():
 	return bottle.static_file("logo.ico", "./img/")
+
+@app.route("/img/:name")
+def favicon(name):
+	return bottle.static_file(name, "./img/")
 
 def start(port=8000, dropper=None):
 	if dropper!=None:

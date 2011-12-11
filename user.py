@@ -7,8 +7,7 @@ from Crypto.PublicKey import RSA
 
 
 randomizer = random.SystemRandom()
-CHALLENGE_TIME = datetime.timedelta(minutes=2)
-
+EXPIRATION_TIME = datetime.timedelta(days=30)
 
 def randstring():
 	return base64.encodestring(
