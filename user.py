@@ -42,6 +42,10 @@ class User(object):
 		self.set_from(kwargs)
 
 	@property
+	def claimed(self):
+		return bool(self.signed or self.password)
+
+	@property
 	def signed(self):
 		return self.sig != ""
 

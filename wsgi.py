@@ -33,9 +33,11 @@ def getuser(name):
 @app.get('/ip/:name')
 def get_ip(name):
 	if name in hosted:
-		bottle.response.set_content_type('text/plain')
-
 		thisuser = hosted[name]
+		if not thisuser.public or not thisuser.private:
+			bottle.abort(503, "Reserved name, but user is not online right now")
+
+		bottle.response.set_content_type('text/plain')
 		yield thisuser.public + "\r\n"
 		yield thisuser.private + "\r\n"
 		if thisuser.signed:
@@ -82,6 +84,44 @@ def post_claim(name):
 
 	return ["Set successfully"]
 
+@app.post('/unclaim/:name')
+def unclaim(name):
+	if name in hosted:
+		thisuser = hosted[name]
+		input = dict(bottle.request.forms)
+
+		if thisuser.password != None:
+			if not thisuser.check_password(input['password']):
+				bottle.abort(401, "Not authorized - wrong password")
+
+		del hosted[name]
+
+		usersChanged.set()
+		return ["Successfully unhosted the user"]
+	else:
+		bottle.abort(404, "User not stored")
+
+@app.post('/unhost/:name')
+def unhost(name):
+	if name in hosted:
+		thisuser = hosted[name]
+		input = dict(bottle.request.forms)
+
+		if thisuser.password != None:
+			if not thisuser.check_password(input['password']):
+				bottle.abort(401, "Not authorized - wrong password")
+
+		if thisuser.claimed:
+			thisuser.public  = ""
+			thisuser.private = ""
+		else:
+			del hosted[name]
+
+		usersChanged.set()
+		return ["Successfully unhosted the user"]
+	else:
+		bottle.abort(404, "User not stored")
+
 @app.route('/wizard/_/:action')
 def wizard_redirect(action):
 	return [
@@ -114,6 +154,25 @@ def wizard_claim(name):
 		"</form></body></html>"
 	]
 
+@app.route('/wizard/:name/unclaim')
+def wizard_unclaim(name):
+	return [
+		"<html><head><title>Rex Form Wizard: Destroy your account</title></head><body>",
+		'<form action="/unclaim/%s" method="post">' % name,
+		'Password (if set): <input type="text" name="password" /><br/>',
+		'<input type="submit" />',
+		"</form></body></html>"
+	]
+
+@app.route('/wizard/:name/unhost')
+def wizard_unhost(name):
+	return [
+		"<html><head><title>Rex Form Wizard: Log Off</title></head><body>",
+		'<form action="/unhost/%s" method="post">' % name,
+		'Password (if set): <input type="text" name="password" /><br/>',
+		'<input type="submit" />',
+		"</form></body></html>"
+	]
 
 @app.route('/')
 @app.route('/index')
