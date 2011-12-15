@@ -25,6 +25,11 @@ app = bottle.Bottle()
 
 bottle.debug(True)
 
+def getuser(name):
+	if not name in hosted:
+		hosted[name] = user.User(name)
+	return hosted[name]
+
 @app.get('/ip/:name')
 def get_ip(name):
 	if name in hosted:
@@ -40,14 +45,38 @@ def get_ip(name):
 
 @app.post('/ip/:name')
 def post_ip(name):
-	if not name in hosted:
-		hosted[name] = user.User(name)
-	thisuser = hosted[name]
+	thisuser = getuser(name)
 
 	input = dict(bottle.request.forms)
 
+	if not ('public_ip' in input and 'private_ip' in input):
+		bottle.abort(400, "Missing required variables")
 	thisuser.public = input['public_ip']
 	thisuser.private = input['private_ip']
+
+	if thisuser.password != None:
+		if 'password' not in input:
+			bottle.abort(401, "Not authorized - account is password protected")
+		elif not thisuser.check_password(input['password']):
+			bottle.abort(401, "Not authorized - wrong password")
+
+	usersChanged.set()
+
+	return ["Set successfully"]
+
+@app.post('/claim/:name')
+def post_claim(name):
+	thisuser = getuser(name)
+	input = dict(bottle.request.forms)
+
+	if thisuser.password != None:
+		if 'password_old' not in input:
+			bottle.abort(401, "Not authorized - account is password protected")
+		elif not thisuser.check_password(input['password_old']):
+			bottle.abort(401, "Not authorized - wrong password")
+
+	if 'password' in input:
+		thisuser.set_password(input['password'])
 
 	usersChanged.set()
 
@@ -69,9 +98,22 @@ def wizard_set(name):
 		'<form action="/ip/%s" method="post">' % name,
 		'Public IP: <input type="text" name="public_ip" /><br/>',
 		'Private IP: <input type="text" name="private_ip" /><br/>',
+		'Password (if set): <input type="text" name="password" /><br/>',
 		'<input type="submit" />',
 		"</form></body></html>"
 	]
+
+@app.route('/wizard/:name/claim')
+def wizard_claim(name):
+	return [
+		"<html><head><title>Rex Form Wizard: Claim an address</title></head><body>",
+		'<form action="/claim/%s" method="post">' % name,
+		'Password: <input type="text" name="password" /><br/>',
+		'Old Password (if set): <input type="text" name="password_old" /><br/>',
+		'<input type="submit" />',
+		"</form></body></html>"
+	]
+
 
 @app.route('/')
 @app.route('/index')

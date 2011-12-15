@@ -4,7 +4,7 @@ import base64
 import pickle
 
 from Crypto.PublicKey import RSA
-
+from hashlib import sha1
 
 randomizer = random.SystemRandom()
 CHALLENGE_TIME        = expiration.timedelta(minutes=2)
@@ -24,6 +24,9 @@ def encryptstring(s, key):
 
 def now():
 	return datetime.datetime.now()
+
+def make_hash(str):
+	return sha1(str).digest()
 
 class User(object):
 	def __init__(self, argname, **kwargs):
@@ -103,6 +106,12 @@ class User(object):
 				self._challenge = (v['source'], v['encrypted'], v['expires'])
 		else:
 			raise KeyError(i)
+
+	def set_password(self, pwd):
+		self.password = make_hash(pwd)
+
+	def check_password(self, pwd):
+		return self.password == make_hash(pwd)
 
 	def set_key(self, keystr):
 		if keystr == None:
