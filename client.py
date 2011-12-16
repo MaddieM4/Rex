@@ -135,6 +135,22 @@ class Client(object):
 	def url(self):
 		return self.account.url
 
+	@property
+	def username(self):
+		return self.account.username
+
+	@property
+	def password(self):
+		return self.account.password
+
+	@username.setter
+	def username(self, value):
+		self.account.username = value
+
+	@password.setter
+	def password(self, value):
+		self.account.password = value
+
 class Account(object):
 	def __init__(self, server, username=None, password=None):
 		self.server = server

@@ -1,8 +1,13 @@
 Dependencies:
+ * Python 2.6+
  * PyCrypto
- * Gevent
  * BottlePy
+ * Gevent
 
+Client dependencies:
+ * Python 2.6+
+ * Gevent
+ 
 Rex is an experimental protocol for simplifying a few under-the-hood steps of P2P
 hole punching. It works by providing a service to maintain a TCP socket to the
 server on port 7653 which the server keeps alive for you (as long as your TCP stack
