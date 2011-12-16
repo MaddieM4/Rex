@@ -12,12 +12,12 @@ def IP_text(tup):
 	return "%s:%d" % tup
 
 class Client(object):
-	def __init__(self, server, hoport=7653):
+	def __init__(self, server, hoport=7653, account = None):
 		self._public = None
 		self._buffer = ""
 		self.peers = set()
 		self.closed = False
-		self.account = Account(server)
+		self.account = account or Account(server)
 
 		self.hosocket = socket.create_connection((server, hoport))
 		self.hosocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -40,16 +40,10 @@ class Client(object):
 		# Make yourself publicly available
 		print "Posting IP data to site got HTTP code ", self.account.host(self.public, self.private).getcode()
 
-	def listen(self):
-		# Accept connections on self.server
-		print "Listening..."
-		self.server.listen(5)
-
 	def accept_loop(self):
-		while True:
-			self.listen()
-			self.peers.add(self.server.accept())
-			print self.peers
+		self.server.listen(5)
+		while not self.closed:
+			self.__on_connect(self.server.accept()[0])
 
 	def accept_wakes(self):
 		while not self.closed:
@@ -62,10 +56,11 @@ class Client(object):
 	def connect_peer(self, url):
 		if url == "":
 			return
-		self.peers.add(self.connect(url))
-		print self.peers
+		self.__on_connect(self.connect(url))
 
 	def connect(self, url):
+		# Wake peer (get it to try to connect to you)
+		self.account.wake(url)
 		# Connect to a peer
 		try:
 			pair = urllib.urlopen(url).read()
@@ -94,6 +89,34 @@ class Client(object):
 	def close(self):
 		self.closed = True
 
+	def on_connect(self, sock, url):
+		pass
+
+	def on_disconnect(self, sock):
+		pass
+
+	def __on_connect(self, sock):
+		# Rex handshake
+		path = self.url+"\r\n"
+		sock.sendall(path)
+
+		remotestart = ""
+		while not "\r\n" in remotestart:
+			remote += sock.recv(1)
+		
+		self.on_connect(self, sock, remotestart)
+		if connected(sock):
+			self.peers.add(sock)
+			print self.peers
+
+	def __on_disconnect(self, sock):
+		self.peers.remove(sock)
+		print self.peers
+		self.on_disconnect(self, sock)
+
+	def disconnect(sock):
+		self.__on_disconnect(sock)
+
 	@property
 	def public(self):
 		if not self._public:
@@ -107,6 +130,10 @@ class Client(object):
 	@property
 	def private(self):
 		return self.hosocket.getsockname()
+
+	@property
+	def url(self):
+		return self.account.url
 
 class Account(object):
 	def __init__(self, server, username=None, password=None):
@@ -127,6 +154,48 @@ class Account(object):
 
 		return self.post("/ip/"+self.username, **args)
 
+	def wake(self, theirurl):
+		if not self.username:
+			raise AttributeError("Username not set")
+
+		# Compute wake URL
+		slices = theirurl.split('/')
+		slices[-2] = "wake"
+		wakeurl = "/".join(slices)
+
+		return self.post(wakeurl, url = self.url)
+
+	def claim(self, newpassword=""):
+		if not self.username:
+			raise AttributeError("Username not set")
+
+		args = {
+			"password": newpassword,
+		}
+		if self.password:
+			args['password_old'] = self.password
+
+		result = self.post("/ip/"+self.username, **args)
+		if result.getcode() == 200:
+			self.password = newpassword
+		return result
+
+	def unclaim(self):
+		if not self.username:
+			raise AttributeError("Username not set")
+		args = {}
+		if self.password:
+			args['password'] = self.password
+		return self.post("/unclaim/"+self.username, **args)
+
+	def unhost(self):
+		if not self.username:
+			raise AttributeError("Username not set")
+		args = {}
+		if self.password:
+			args['password'] = self.password
+		return self.post("/unhost/"+self.username, **args)
+
 	def post(self, path, **kwargs):
 		params = urllib.urlencode(kwargs)
 		path = self.path(path)
@@ -137,3 +206,16 @@ class Account(object):
 
 	def path(self, the_path):
 		return "http://" + self.server + the_path
+
+	@property
+	def url(self):
+		return self.path("/ip/"+self.username)
+
+def connected(sock):
+	with gevent.Timeout(0, False):
+		try:
+			sock.recv(0)
+		except:
+			return False
+	return True
+
