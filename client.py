@@ -56,11 +56,12 @@ class Client(object):
 	def connect_peer(self, url):
 		if url == "":
 			return
+		# Wake peer (get it to try to connect to you)
+		self.account.wake(url)
+
 		self.__on_connect(self.connect(url))
 
 	def connect(self, url):
-		# Wake peer (get it to try to connect to you)
-		self.account.wake(url)
 		# Connect to a peer
 		try:
 			pair = urllib.urlopen(url).read()
@@ -168,7 +169,7 @@ class Account(object):
 		if self.password:
 			args['password'] = self.password
 
-		return self.post("/ip/"+self.username, **args)
+		return self.post("/ip/"+self.username, args)
 
 	def wake(self, theirurl):
 		if not self.username:
@@ -178,8 +179,13 @@ class Account(object):
 		slices = theirurl.split('/')
 		slices[-2] = "wake"
 		wakeurl = "/".join(slices)
+		args = {
+			"url": self.url,
+		}
+		print repr(wakeurl)
+		print repr(args)
 
-		return self.post(wakeurl, url = self.url)
+		return self.post(wakeurl, args)
 
 	def claim(self, newpassword=""):
 		if not self.username:
@@ -191,7 +197,7 @@ class Account(object):
 		if self.password:
 			args['password_old'] = self.password
 
-		result = self.post("/ip/"+self.username, **args)
+		result = self.post("/ip/"+self.username, args)
 		if result.getcode() == 200:
 			self.password = newpassword
 		return result
@@ -202,7 +208,7 @@ class Account(object):
 		args = {}
 		if self.password:
 			args['password'] = self.password
-		return self.post("/unclaim/"+self.username, **args)
+		return self.post("/unclaim/"+self.username, args)
 
 	def unhost(self):
 		if not self.username:
@@ -210,11 +216,12 @@ class Account(object):
 		args = {}
 		if self.password:
 			args['password'] = self.password
-		return self.post("/unhost/"+self.username, **args)
+		return self.post("/unhost/"+self.username, args)
 
-	def post(self, path, **kwargs):
-		params = urllib.urlencode(kwargs)
-		path = self.path(path)
+	def post(self, path, args={}):
+		params = urllib.urlencode(args)
+		if not "://" in path:
+			path = self.path(path)
 		return urllib.urlopen(path, params)
 
 	def get(self, path):
