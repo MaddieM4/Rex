@@ -5,6 +5,9 @@ import holdopen
 import wsgi
 import dropprivelege
 
+# Link this for waking
+wsgi.sendlink = holdopen.sendlink
+
 if __name__ == "__main__":
 	droppy = dropprivelege.Dropper(uid_name="philip")
 

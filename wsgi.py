@@ -25,6 +25,10 @@ app = bottle.Bottle()
 
 bottle.debug(True)
 
+def sendlink(pub_ip, url):
+	# Override this function to link to holdopen side
+	raise Exception()
+
 def getuser(name):
 	if not name in hosted:
 		hosted[name] = user.User(name)
@@ -65,6 +69,23 @@ def post_ip(name):
 	usersChanged.set()
 
 	return ["Set successfully"]
+
+@app.post('/wake/:name')
+def wake(name):
+	thisuser = getuser(name)
+	input = dict(bottle.request.forms)
+
+	if not (thisuser.public):
+		bottle.abort(503, "User not logged in")
+
+	if "url" not in input:
+		bottle.abort(400, "Required variable: URL")
+
+	try:
+		sendlink(thisuser.public, input["url"])
+		return ['Sent']
+	except:
+		bottle.abort(503, "Could not wake user")
 
 @app.post('/claim/:name')
 def post_claim(name):
@@ -139,6 +160,16 @@ def wizard_set(name):
 		'Public IP: <input type="text" name="public_ip" /><br/>',
 		'Private IP: <input type="text" name="private_ip" /><br/>',
 		'Password (if set): <input type="text" name="password" /><br/>',
+		'<input type="submit" />',
+		"</form></body></html>"
+	]
+
+@app.route('/wizard/:name/wake')
+def wizard_wake(name):
+	return [
+		"<html><head><title>Rex Form Wizard: Connect to a Peer</title></head><body>",
+		'<form action="/wake/%s" method="post">' % name,
+		'URL: <input type="text" name="url" /><br/>',
 		'<input type="submit" />',
 		"</form></body></html>"
 	]
